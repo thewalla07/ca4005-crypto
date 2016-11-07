@@ -267,6 +267,9 @@ class CryptoHandler {
 
         // write the encrypted file out
         ioh.writeFile(fileBytes, filename+".enc");
+        ioh.writeAsHex(new BigInteger(fileBytes), filename+".asHex");
+        ioh.writeHex(fileBytes, filename+".hex");
+
     }
 
     public BigInteger modExp(BigInteger b, BigInteger g, BigInteger p) {
@@ -343,3 +346,4 @@ class CryptoHandler {
         }
     }
 }
+€          
