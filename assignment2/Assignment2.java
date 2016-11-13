@@ -21,16 +21,46 @@ public class Assignment2 {
         CryptoHandler crh = new CryptoHandler();
         IOHandler ioh = new IOHandler();
 
+        BigInteger e = new BigInteger("65537");
+
+        BigInteger phiN = e;
+
+        BigInteger p = BigInteger.ZERO;
+        BigInteger q = BigInteger.ZERO;
+        BigInteger n = BigInteger.ZERO;
+
         System.out.println("Assignment 2");
 
-        BigInteger p = crh.getProbablePrime(512);
+        p = crh.getProbablePrime(512);
         System.out.println(ioh.toHex(p) + "\n");
 
-        BigInteger q = crh.getProbablePrime(512);
+        q = crh.getProbablePrime(512);
         System.out.println(ioh.toHex(q) + "\n");
 
-        BigInteger n = crh.productOfPrimes(p, q);
+        n = crh.productOfPrimes(p, q);
         System.out.println(ioh.toHex(n) + "\n");
+
+        phiN = crh.eulerTotientPhi(p, q);
+        System.out.println(ioh.toHex(phiN) + "\n");
+
+        int i = 0;
+        while(!crh.areRelativelyPrime(e, phiN)) {
+            p = crh.getProbablePrime(512);
+            System.out.println(ioh.toHex(p) + "\n");
+
+            q = crh.getProbablePrime(512);
+            System.out.println(ioh.toHex(q) + "\n");
+
+            n = crh.productOfPrimes(p, q);
+            System.out.println(ioh.toHex(n) + "\n");
+
+            phiN = crh.eulerTotientPhi(p, q);
+            System.out.println(ioh.toHex(phiN) + "\n");
+
+            i++;
+        }
+
+        System.out.println(i + " iterations");
     }
 }
 
@@ -39,7 +69,7 @@ class CryptoHandler {
 
     public BigInteger getProbablePrime(int nbits) {
 
-        return new BigInteger(nbits, 1, new SecureRandom());
+        return new BigInteger(nbits, 1000000000, new SecureRandom());
     }
 
     public BigInteger productOfPrimes(BigInteger p, BigInteger q) {
@@ -47,23 +77,36 @@ class CryptoHandler {
         return p.multiply(q);
     }
 
-    public byte[] eulerTotientPhi(byte[] n) {
+    public BigInteger eulerTotientPhi(BigInteger p, BigInteger q) {
 
-        byte[] result = new byte[0];
+        // from notes: if p and q are both prime and p != q, then
+        // phi(pq) = (p - 1)(q - 1)
 
-        //TODO: look at notes on euler totient
-        // phi(n) = n - 1 iff n is prime??
+        if (p.compareTo(q) == 0) {
+            return BigInteger.ZERO;
+        }
 
-        return result;
+        return p.subtract(BigInteger.ONE).multiply(q.subtract(BigInteger.ONE));
     }
 
-    public boolean isRelativelyPrime(byte[] e, byte[] phiN) {
+    public boolean areRelativelyPrime(BigInteger e, BigInteger phiN) {
 
-        boolean result = true;
+        return extEGCD(e, phiN).compareTo(BigInteger.ONE) == 0;
+    }
 
-        //TODO: build test for relative primeness
+    public BigInteger extEGCD(BigInteger e, BigInteger phiN) {
 
-        return result;
+        //TODO: implement GCD algorithm
+
+        while (e.compareTo(BigInteger.ZERO) != 0 && phiN.compareTo(BigInteger.ZERO) != 0) {
+            if (e.compareTo(phiN) > 0) {
+                e = e.mod(phiN);
+            } else {
+                phiN = phiN.mod(e);
+            }
+        }
+
+        return e.max(phiN);
     }
 
     public byte[] getDecryptionExponent(byte[] e, byte[] phiN) {
