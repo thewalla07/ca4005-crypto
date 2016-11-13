@@ -60,38 +60,24 @@ public class Assignment2 {
             i++;
         }
 
-        System.out.println(i + " iterations");
+        System.out.println(i + " iterations" + "\n");
 
         BigInteger gcd = crh.euclidianGCD(e, phiN);
+        System.out.println("EGCD: " + ioh.toHex(gcd) + "\n");
 
-        System.out.println("EGCD: " + ioh.toHex(gcd));
+        BigInteger d = crh.multiplicativeInverse(e, phiN);
+        System.out.println("Decryption exponent: " + ioh.toHex(d) + "\n");
 
-        gcd = crh.extendedEGCD(e, phiN);
+        BigInteger c = new BigInteger("3522003");
+        System.out.println("File: " + ioh.toHex(c) + "\n");
+        //TODO: get input file for decryption signature
 
-        System.out.println("XGCD: " + ioh.toHex(gcd));
+        BigInteger digest = crh.sha256(c);
+        System.out.println("Digest: " + ioh.toHex(digest) + "\n");
 
-
-        e = new BigInteger("240");
-        phiN = new BigInteger("46");
-
-        gcd = crh.euclidianGCD(e, phiN);
-
-        System.out.println("EGCD: " + ioh.toHex(gcd));
-
-        gcd = crh.extendedEGCD(e, phiN);
-
-        System.out.println("XGCD: " + ioh.toHex(gcd));
-
-        e = new BigInteger("46");
-        phiN = new BigInteger("240");
-
-        gcd = crh.euclidianGCD(e, phiN);
-
-        System.out.println("EGCD: " + ioh.toHex(gcd));
-
-        gcd = crh.extendedEGCD(e, phiN);
-
-        System.out.println("XGCD: " + ioh.toHex(gcd));
+        //TODO: modular exponentiation using Chinese Remainder Theorem
+        BigInteger signedDigest = crh.modExp(c, d, n);
+        System.out.println("Signed digest: " + ioh.toHex(signedDigest) + "\n");
     }
 }
 
@@ -147,7 +133,7 @@ class CryptoHandler {
         return e.max(phiN);
     }
 
-    public BigInteger extendedEGCD(BigInteger e, BigInteger phiN) {
+    public BigInteger multiplicativeInverse(BigInteger e, BigInteger phiN) {
 
         /*
             from the lecture notes, we can determine when some 'a'
@@ -217,14 +203,20 @@ class CryptoHandler {
 
         // System.out.println(y+ ", " +old_y+ ", " +x+ ", " +old_x);
 
+        // we assume that the original gcd(e, phiN) == 1, we will
+        // not check this before returning.
+
         if (orig_e.compareTo(orig_phiN) > 0) {
 
-            return old_x.multiply(orig_e).add(old_y.multiply(orig_phiN));
+            return old_x.mod(orig_phiN);
 
         } else {
 
-            return old_x.multiply(orig_phiN).add(old_y.multiply(orig_e));
+            return old_x.mod(orig_e);
         }
+
+
+
         // using the equation above a^-1 = x (mod N)
     }
 
