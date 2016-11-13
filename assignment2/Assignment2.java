@@ -61,6 +61,37 @@ public class Assignment2 {
         }
 
         System.out.println(i + " iterations");
+
+        BigInteger gcd = crh.euclidianGCD(e, phiN);
+
+        System.out.println("EGCD: " + ioh.toHex(gcd));
+
+        gcd = crh.extendedEGCD(e, phiN);
+
+        System.out.println("XGCD: " + ioh.toHex(gcd));
+
+
+        e = new BigInteger("240");
+        phiN = new BigInteger("46");
+
+        gcd = crh.euclidianGCD(e, phiN);
+
+        System.out.println("EGCD: " + ioh.toHex(gcd));
+
+        gcd = crh.extendedEGCD(e, phiN);
+
+        System.out.println("XGCD: " + ioh.toHex(gcd));
+
+        e = new BigInteger("46");
+        phiN = new BigInteger("240");
+
+        gcd = crh.euclidianGCD(e, phiN);
+
+        System.out.println("EGCD: " + ioh.toHex(gcd));
+
+        gcd = crh.extendedEGCD(e, phiN);
+
+        System.out.println("XGCD: " + ioh.toHex(gcd));
     }
 }
 
@@ -91,12 +122,19 @@ class CryptoHandler {
 
     public boolean areRelativelyPrime(BigInteger e, BigInteger phiN) {
 
-        return extEGCD(e, phiN).compareTo(BigInteger.ONE) == 0;
+        return euclidianGCD(e, phiN).compareTo(BigInteger.ONE) == 0;
     }
 
-    public BigInteger extEGCD(BigInteger e, BigInteger phiN) {
+    public BigInteger euclidianGCD(BigInteger e, BigInteger phiN) {
 
-        //TODO: implement GCD algorithm
+        /*
+            r0 = q1r1 + r2
+            r1 = q2r2 + r3
+                where rk = rk-2 (mod rk-1), and q is some quotient
+
+            these steps can be used progressively to find the gcd of
+            r0 and r1.
+         */
 
         while (e.compareTo(BigInteger.ZERO) != 0 && phiN.compareTo(BigInteger.ZERO) != 0) {
             if (e.compareTo(phiN) > 0) {
@@ -109,12 +147,93 @@ class CryptoHandler {
         return e.max(phiN);
     }
 
+    public BigInteger extendedEGCD(BigInteger e, BigInteger phiN) {
+
+        /*
+            from the lecture notes, we can determine when some 'a'
+            has an inverse (mod N) by using our EGCD algorithm ie
+            iff egcd(a, N) == 1.
+
+            we can use an extended version of the EGCD algorithm
+            to calculate our inverse.
+
+            given a,N we can compute d,x,y using xgcd such that:
+                d = gcd(a,N) = xa + yN
+
+            NOTE: unicode for congruent symbol ≡ is u2261
+            considering the above modulo N we get
+                d ≡ xa + yN (mod N) ≡ xa (mod N)
+
+            therefor if d = 1, then a has a multiplicative inverse
+            giben by:
+                a^-1 ≡ x (mod N)
+
+            also: the general equation ax ≡ b (mod N) has precisely
+            d = gcd(a, N) solutions iff d divides b.
+
+        */
+
+        // here we are going to use the quotients instead of
+        // getting rid of them
+
+
+        // using the explanations and examples at:
+        // https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
+        // in addition to the lecture notes in order to
+        // figure out the extended EGCD
+
+        // start at values of x = 0, old_x = 1, y = 1, old_y = 1
+        // d = phiN, old_d = e
+
+        BigInteger orig_e = e;
+        BigInteger orig_phiN = phiN;
+
+        BigInteger x = BigInteger.ZERO;
+        BigInteger y = BigInteger.ONE;
+
+        BigInteger old_x = BigInteger.ONE;
+        BigInteger old_y = BigInteger.ZERO;
+
+        BigInteger tmp = BigInteger.ZERO;
+        BigInteger q = BigInteger.ZERO;
+
+        while (e.compareTo(BigInteger.ZERO) != 0 && phiN.compareTo(BigInteger.ZERO) != 0) {
+            if (e.compareTo(phiN) > 0) {
+                q = e.divide(phiN);
+                e = e.mod(phiN);
+            } else {
+                q = phiN.divide(e);
+                phiN = phiN.mod(e);
+            }
+
+            tmp = x;
+            x = old_x.subtract(q.multiply(x));
+            old_x = tmp;
+
+            tmp = y;
+            y = old_y.subtract(q.multiply(y));
+            old_y = tmp;
+        }
+
+        // System.out.println(y+ ", " +old_y+ ", " +x+ ", " +old_x);
+
+        if (orig_e.compareTo(orig_phiN) > 0) {
+
+            return old_x.multiply(orig_e).add(old_y.multiply(orig_phiN));
+
+        } else {
+
+            return old_x.multiply(orig_phiN).add(old_y.multiply(orig_e));
+        }
+        // using the equation above a^-1 = x (mod N)
+    }
+
     public byte[] getDecryptionExponent(byte[] e, byte[] phiN) {
 
         byte[] d = new byte[0];
 
         //TODO: d = multiplicativeInverse of e (mod phi(N))
-        // use own umpl of extended  EGCD algorithm to calculate
+        // use own umpl of euclidiannded  EGCD algorithm to calculate
         // the inverse, not a lib method.
 
         return d;
