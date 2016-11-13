@@ -17,29 +17,34 @@ import java.security.MessageDigest;
 
 public class Assignment2 {
     public static void main(String [] args) {
+
+        CryptoHandler crh = new CryptoHandler();
+        IOHandler ioh = new IOHandler();
+
         System.out.println("Assignment 2");
+
+        BigInteger p = crh.getProbablePrime(512);
+        System.out.println(ioh.toHex(p) + "\n");
+
+        BigInteger q = crh.getProbablePrime(512);
+        System.out.println(ioh.toHex(q) + "\n");
+
+        BigInteger n = crh.productOfPrimes(p, q);
+        System.out.println(ioh.toHex(n) + "\n");
     }
 }
 
 
 class CryptoHandler {
 
-    public byte[] geterateNbitProbablePrime(int nbits) {
+    public BigInteger getProbablePrime(int nbits) {
 
-        byte[] result = new byte[nbits/8];
-
-        //TODO: implement generation of probable prime
-
-        return result;
+        return new BigInteger(nbits, 1, new SecureRandom());
     }
 
-    public byte[] productOfPrimes(byte[] p, byte[] q) {
+    public BigInteger productOfPrimes(BigInteger p, BigInteger q) {
 
-        byte[] result = new byte[0];
-
-        //TODO: product of two prime numbers
-
-        return result;
+        return p.multiply(q);
     }
 
     public byte[] eulerTotientPhi(byte[] n) {
