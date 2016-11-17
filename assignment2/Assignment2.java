@@ -68,15 +68,28 @@ public class Assignment2 {
         BigInteger d = crh.multiplicativeInverse(e, phiN);
         System.out.println("Decryption exponent: " + ioh.toHex(d) + "\n");
 
-        BigInteger c = new BigInteger("3522003");
+        String str = "13522003";
+
+        BigInteger c = new BigInteger(str);
         System.out.println("File: " + ioh.toHex(c) + "\n");
         //TODO: get input file for decryption signature
 
         BigInteger digest = crh.sha256(c);
         System.out.println("Digest: " + ioh.toHex(digest) + "\n");
 
-        //TODO: modular exponentiation using Chinese Remainder Theorem
+        //TODO: modular exponentiation using Chinese Remainder Theor
         BigInteger signedDigest = crh.modExp(c, d, n);
+        System.out.println("Signed digest: " + ioh.toHex(signedDigest) + "\n");
+
+        c = new BigInteger(str.getBytes());
+        System.out.println("File: " + ioh.toHex(c) + "\n");
+        //TODO: get input file for decryption signature
+
+        digest = crh.sha256(c);
+        System.out.println("Digest: " + ioh.toHex(digest) + "\n");
+
+        //TODO: modular exponentiation using Chinese Remainder Theor
+        signedDigest = crh.modExp(c, d, n);
         System.out.println("Signed digest: " + ioh.toHex(signedDigest) + "\n");
     }
 }
@@ -415,7 +428,7 @@ class CryptoHandler {
                 keyGen.init(nBits);
                 SecretKey key = keyGen.generateKey();
 
-                newkey = new BigInteger(DatatypeConverter.printHexBinary(key.getEncoded()), 16);
+                newkey = new BigInteger(1, key.getEncoded());
             }
 
             return newkey;
@@ -498,7 +511,8 @@ class IOHandler {
 
     public String toHex(BigInteger value) {
 
-        return value.toString(16);
+        BigInteger b = new BigInteger(1, value.toByteArray());
+        return b.toString(16);
     }
 
     public BigInteger toBigInt(String keyHexString) {
