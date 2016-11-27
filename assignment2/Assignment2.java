@@ -18,30 +18,8 @@ import java.security.MessageDigest;
 public class Assignment2 {
     public static void main(String [] args) {
 
-
-
         CryptoHandler crh = new CryptoHandler();
         IOHandler ioh = new IOHandler();
-
-
-
-        if(args.length > 0){
-
-            BigInteger e = new BigInteger(args[0]);
-            BigInteger mod = new BigInteger(args[1]);
-
-            BigInteger multinv = crh.multiplicativeInverse(e, mod);
-            System.out.println(multinv);
-
-            multinv = e.modInverse(mod);
-            System.out.println(multinv);
-
-
-            multinv = crh.euclidianGCD(e, mod);
-            System.out.println(multinv);
-
-            return;
-        }
 
         BigInteger e = new BigInteger("65537");
 
@@ -55,18 +33,18 @@ public class Assignment2 {
 
         // 1. generate two distinct 512-bit probable primes p and q
         p = crh.getProbablePrime(512);
-        System.out.println(ioh.toHex(p) + "\n");
+        System.out.println("p: "+ioh.toHex(p) + "\n");
 
         q = crh.getProbablePrime(512);
-        System.out.println(ioh.toHex(q) + "\n");
+        System.out.println("q: "+ioh.toHex(q) + "\n");
 
         // 2. calculate the product of these two primes N = pq
         n = crh.productOfPrimes(p, q);
-        System.out.println(ioh.toHex(n) + "\n");
+        System.out.println("n: "+ioh.toHex(n) + "\n");
 
         // 3. calculate the euler totient function phi(N)
         phiN = crh.eulerTotientPhi(p, q);
-        System.out.println(ioh.toHex(phiN) + "\n");
+        System.out.println("phi(n): "+ioh.toHex(phiN) + "\n");
 
         // 4. you will be using an encryption exponent e = 65537, so you will
         // need to ensure it is relatively prime to phi(N). If it is not, go
@@ -76,18 +54,18 @@ public class Assignment2 {
 
             // 1. generate two distinct 512-bit probable primes p and q
             p = crh.getProbablePrime(512);
-            System.out.println(ioh.toHex(p) + "\n");
+            System.out.println("p: "+ioh.toHex(p) + "\n");
 
             q = crh.getProbablePrime(512);
-            System.out.println(ioh.toHex(q) + "\n");
+            System.out.println("q: "+ioh.toHex(q) + "\n");
 
             // 2. calculate the product of these two primes N = pq
             n = crh.productOfPrimes(p, q);
-            System.out.println(ioh.toHex(n) + "\n");
+            System.out.println("n: "+ioh.toHex(n) + "\n");
 
             // 3. calculate the euler totient function phi(N)
             phiN = crh.eulerTotientPhi(p, q);
-            System.out.println(ioh.toHex(phiN) + "\n");
+            System.out.println("phi(n): "+ioh.toHex(phiN) + "\n");
 
             i++;
         }
@@ -106,30 +84,37 @@ public class Assignment2 {
         BigInteger multinv = e.modInverse(phiN);
         System.out.println("Correct decryption exponent: " + ioh.toHex(multinv) + "\n");
 
+        // 6. You should then write code to implement a decryption method which
+        // calculates c^d (mod N). You should use your own implementation of the
+        // chinese remainder theorem to calculate this more efficiently; this
+        // can also make use of your multiplicative inverse implementation.
 
-        String str = "13522003";
+        // Done
 
-        BigInteger c = new BigInteger(str);
+        // 7. Once your implementation is complete, you should create a zip file
+        // containing all your code and digitally sign a digest of this file as
+        // follows:
+
+        // 7.1. Generate a 256-bit digest of the zip file using SHA-256
+        String filename = "Assignment2.zip";
+        byte[] fileBytes = ioh.readFile(filename);
+
+        BigInteger c = new BigInteger(1, fileBytes);
         System.out.println("File: " + ioh.toHex(c) + "\n");
-        //TODO: get input file for decryption signature
 
         BigInteger digest = crh.sha256(c);
         System.out.println("Digest: " + ioh.toHex(digest) + "\n");
 
-        //TODO: modular exponentiation using Chinese Remainder Theor
-        BigInteger signedDigest = crh.modExp(c, d, n);
-        System.out.println("Signed digest: " + ioh.toHex(signedDigest) + "\n");
+        // 7.2. Apply your decryption method to this digest. Note that for the
+        // purpose of this assignment no padding should be added to the digest
+        BigInteger signedDigest = crh.modExpCRT(c, d, p, q, n);
+        System.out.println("Signed digest w/ CRT: " + ioh.toHex(signedDigest) + "\n");
 
-        c = new BigInteger(str.getBytes());
-        System.out.println("File: " + ioh.toHex(c) + "\n");
-        //TODO: get input file for decryption signature
-
-        digest = crh.sha256(c);
-        System.out.println("Digest: " + ioh.toHex(digest) + "\n");
-
-        //TODO: modular exponentiation using Chinese Remainder Theor
-        signedDigest = crh.modExp(c, d, n);
-        System.out.println("Signed digest: " + ioh.toHex(signedDigest) + "\n");
+        // Values to send
+        ioh.writeAsHex(n, "n.hex");
+        // zipped code file
+        ioh.writeAsHex(signedDigest, "signedDigest.hex");
+        // declaration of sole work
     }
 }
 
@@ -251,166 +236,20 @@ class CryptoHandler {
         return t;
     }
 
-    public byte[] getDecryptionExponent(byte[] e, byte[] phiN) {
+    public BigInteger modExpCRT(BigInteger c, BigInteger d, BigInteger p, BigInteger q, BigInteger n) {
+        // calculate c ^ d (mod N), using CRT. We take N in via its factors,
+        // p and q.
 
-        byte[] d = new byte[0];
+        BigInteger tmp = p;
+        p = tmp.min(q);
+        q = tmp.max(q);
 
-        //TODO: d = multiplicativeInverse of e (mod phi(N))
-        // use own umpl of euclidiannded  EGCD algorithm to calculate
-        // the inverse, not a lib method.
+        BigInteger step1 = c.modPow(d.mod(p.subtract(BigInteger.ONE)), p);
+        BigInteger step2 = c.modPow(d.mod(q.subtract(BigInteger.ONE)), q);
 
-        return d;
-    }
+        BigInteger modInvQ = multiplicativeInverse(q, p);
 
-    public byte[] getDecryption(byte[] c, byte[] d, byte[] n) {
-
-        byte[] message = new byte[0];
-
-        //TODO: implement c^d (mod n)
-        // use impl of CRT to calculate this more efficiantly
-        // can also make use of mult inv algo here
-
-        return message;
-    }
-
-    public byte[] padBytes(byte[] bytes, int blockSize) {
-
-        BitSet bits = BitSet.valueOf(bytes);
-
-        /*
-            Because of the way BitSet handles a byte array, you can't directly
-            pad the bits with 0s to the required length. Instead, I appended
-            the 1 bit in the required position first. This position is
-            determined by first getting the length of the bitset.
-
-            If the bitset is a multiple of 8, then the pad position is set to
-            the length + 7. Eg if the following bitset exists:
-            10101111 01011111 - length is 16, so we pad at position 23
-            0123.... 8....... .......23
-            10101111 01011111 00000001
-
-            The reason we pad at what appears to be a byte is because bitset
-            reverses the bytes individually. I think this may be to do with
-            endianness, but I could not figure this out from the api. When this
-            is converted back to a byte[] the bits will actuall be as follows:
-            11110101 11111010 10000000
-
-            I verified this behaviour using the following linux command:
-            $ cat file | xxd -b
-
-            This way I could see the arrangement of bits and verify the padding
-            position.
-        */
-        int len = bits.length();
-        int padPosition = (bytes.length * 8) + 7;
-
-        bits.set(padPosition, true);
-
-        /*
-            the length of the new array will be a multiple of the blockSize.
-            If the current length ends at a full block, then that means the
-            padded 1 bit was added at the 128th bit of the block, and so we add
-            an extra 16 bytes for the padding of 0s. In any other case, we add
-            the extra 16 bytes to fill out the rest of the block. Ex:
-            len = 220,
-
-                the last bit will be around here,
-                so we want to pad to the end of
-                block_2, total size = 32Bytes
-                          |
-                          |
-                          *
-            [ block_1 | block_2 ]
-
-            (16*(220/128)) + 16
-            (16*(1)) + 16
-            16 + 16
-            32 Bytes
-
-            In the case of a just filled block:
-
-            (16*(256/128)) + 16
-            (16*(2)) + 16
-            32 + 16
-            48 Bytes
-
-            So we can use the same calculation in both cases
-        */
-
-        len = bits.length();
-        int arrSize = (16*(len/blockSize)) + 16;
-
-        // Create a new array with the above bits that have been padded with
-        // a single 1 bit. The new array will be arrSize bytes size in total,
-        // meaning the remaining bytes will be padded with 0s
-        byte[] newBytes = Arrays.copyOf(bits.toByteArray(), arrSize);
-
-        return newBytes;
-    }
-
-    public void encryptFile(String filename, BigInteger k, BigInteger iv) {
-
-        // reference cipher transformations found at:
-        // https://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html
-
-        String cipherType = "AES/CBC/NoPadding";
-
-        // use an iohandler to get the file data to encrypt
-        IOHandler ioh = new IOHandler();
-        byte[] fileBytes = ioh.readFile(filename);
-
-        // pad the file to the required multiple of 128 bits
-        fileBytes = padBytes(fileBytes, 128);
-
-        // write file to test padding correctly applied
-        ioh.writeFile(fileBytes, filename+"test");
-
-        SecretKeySpec keySpec = new SecretKeySpec(k.toByteArray(), "AES");
-        IvParameterSpec ivSpec = new IvParameterSpec(iv.toByteArray());
-
-        try {
-
-            Cipher c = Cipher.getInstance(cipherType);
-            c.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
-            fileBytes = c.doFinal(fileBytes);
-
-        } catch (Exception e) {
-
-            e.printStackTrace();
-        }
-
-        // write the encrypted file out
-        ioh.writeFile(fileBytes, filename+".enc");
-    }
-
-    public BigInteger modExp(BigInteger b, BigInteger g, BigInteger p) {
-
-        // calculate result = b ^ g mod p
-        //                y = a ^ x mod p
-
-
-        // I used the right to left method from the lecture notes to
-        // perform the modular exponentiation
-
-        /*
-            y = 1
-            for i = 0 to n-1 do
-                if x(i) = 1 then y = (y*a) mod p
-                a = (a*a) mod p
-            end
-        */
-        BigInteger result = BigInteger.ONE;
-        BigInteger two = new BigInteger("2");
-
-        b = b.mod(p);
-        while (g.compareTo(BigInteger.ZERO) > 0) {
-            if (g.mod(two).compareTo(BigInteger.ONE) == 0) {
-                result = result.multiply(b).mod(p);
-            }
-            b = b.multiply(b).mod(p);
-            g = g.shiftRight(1);
-        }
-        return result;
+        return step2.add(q.multiply(modInvQ.multiply(step1.subtract(step2)).mod(p)));
     }
 
     public BigInteger sha256(BigInteger num) {
