@@ -18,8 +18,30 @@ import java.security.MessageDigest;
 public class Assignment2 {
     public static void main(String [] args) {
 
+
+
         CryptoHandler crh = new CryptoHandler();
         IOHandler ioh = new IOHandler();
+
+
+
+        if(args.length > 0){
+
+            BigInteger e = new BigInteger(args[0]);
+            BigInteger mod = new BigInteger(args[1]);
+
+            BigInteger multinv = crh.multiplicativeInverse(e, mod);
+            System.out.println(multinv);
+
+            multinv = e.modInverse(mod);
+            System.out.println(multinv);
+
+
+            multinv = crh.euclidianGCD(e, mod);
+            System.out.println(multinv);
+
+            return;
+        }
 
         BigInteger e = new BigInteger("65537");
 
@@ -31,29 +53,39 @@ public class Assignment2 {
 
         System.out.println("Assignment 2");
 
+        // 1. generate two distinct 512-bit probable primes p and q
         p = crh.getProbablePrime(512);
         System.out.println(ioh.toHex(p) + "\n");
 
         q = crh.getProbablePrime(512);
         System.out.println(ioh.toHex(q) + "\n");
 
+        // 2. calculate the product of these two primes N = pq
         n = crh.productOfPrimes(p, q);
         System.out.println(ioh.toHex(n) + "\n");
 
+        // 3. calculate the euler totient function phi(N)
         phiN = crh.eulerTotientPhi(p, q);
         System.out.println(ioh.toHex(phiN) + "\n");
 
+        // 4. you will be using an encryption exponent e = 65537, so you will
+        // need to ensure it is relatively prime to phi(N). If it is not, go
+        // back to step 1 and generate new values for p and q.
         int i = 0;
         while(!crh.areRelativelyPrime(e, phiN)) {
+
+            // 1. generate two distinct 512-bit probable primes p and q
             p = crh.getProbablePrime(512);
             System.out.println(ioh.toHex(p) + "\n");
 
             q = crh.getProbablePrime(512);
             System.out.println(ioh.toHex(q) + "\n");
 
+            // 2. calculate the product of these two primes N = pq
             n = crh.productOfPrimes(p, q);
             System.out.println(ioh.toHex(n) + "\n");
 
+            // 3. calculate the euler totient function phi(N)
             phiN = crh.eulerTotientPhi(p, q);
             System.out.println(ioh.toHex(phiN) + "\n");
 
@@ -62,11 +94,18 @@ public class Assignment2 {
 
         System.out.println(i + " iterations" + "\n");
 
+        // 5. calculate the decryption exponent d, which is the multiplicative
+        // inverse of e (mod phi(N)). This should be your own implementation
+        // of the extended euclidian gcd algorithm.
         BigInteger gcd = crh.euclidianGCD(e, phiN);
         System.out.println("EGCD: " + ioh.toHex(gcd) + "\n");
 
         BigInteger d = crh.multiplicativeInverse(e, phiN);
         System.out.println("Decryption exponent: " + ioh.toHex(d) + "\n");
+
+        BigInteger multinv = e.modInverse(phiN);
+        System.out.println("Correct decryption exponent: " + ioh.toHex(multinv) + "\n");
+
 
         String str = "13522003";
 
@@ -184,53 +223,32 @@ class CryptoHandler {
         // start at values of x = 0, old_x = 1, y = 1, old_y = 1
         // d = phiN, old_d = e
 
-        BigInteger orig_e = e;
-        BigInteger orig_phiN = phiN;
+        BigInteger t = BigInteger.ZERO;
+        BigInteger r = phiN;
 
-        BigInteger x = BigInteger.ZERO;
-        BigInteger y = BigInteger.ONE;
-
-        BigInteger old_x = BigInteger.ONE;
-        BigInteger old_y = BigInteger.ZERO;
+        BigInteger new_t = BigInteger.ONE;
+        BigInteger new_r = e;
 
         BigInteger tmp = BigInteger.ZERO;
-        BigInteger q = BigInteger.ZERO;
 
-        while (e.compareTo(BigInteger.ZERO) != 0 && phiN.compareTo(BigInteger.ZERO) != 0) {
-            if (e.compareTo(phiN) > 0) {
-                q = e.divide(phiN);
-                e = e.mod(phiN);
-            } else {
-                q = phiN.divide(e);
-                phiN = phiN.mod(e);
-            }
+        while (new_r.compareTo(BigInteger.ZERO) != 0) {
+            BigInteger q = r.divide(new_r);
 
-            tmp = x;
-            x = old_x.subtract(q.multiply(x));
-            old_x = tmp;
+            tmp = t;
+            t = new_t;
+            new_t = tmp.subtract(q.multiply(new_t));
 
-            tmp = y;
-            y = old_y.subtract(q.multiply(y));
-            old_y = tmp;
+            tmp = r;
+            r = new_r;
+            new_r = tmp.subtract(q.multiply(new_r));
         }
-
-        // System.out.println(y+ ", " +old_y+ ", " +x+ ", " +old_x);
-
-        // we assume that the original gcd(e, phiN) == 1, we will
-        // not check this before returning.
-
-        if (orig_e.compareTo(orig_phiN) > 0) {
-
-            return old_x.mod(orig_phiN);
-
-        } else {
-
-            return old_x.mod(orig_e);
+        if (r.compareTo(BigInteger.ONE) > 0) {
+            return new BigInteger("-1");
         }
-
-
-
-        // using the equation above a^-1 = x (mod N)
+        if (t.compareTo(BigInteger.ZERO) < 0) {
+            t = t.add(phiN);
+        }
+        return t;
     }
 
     public byte[] getDecryptionExponent(byte[] e, byte[] phiN) {
