@@ -97,6 +97,9 @@ public class Assignment2 {
 
         // 7.1. Generate a 256-bit digest of the zip file using SHA-256
         String filename = "Assignment2.zip";
+        if (args.length == 1) {
+            filename = args[0];
+        }
         byte[] fileBytes = ioh.readFile(filename);
 
         BigInteger c = new BigInteger(1, fileBytes);
@@ -107,13 +110,20 @@ public class Assignment2 {
 
         // 7.2. Apply your decryption method to this digest. Note that for the
         // purpose of this assignment no padding should be added to the digest
-        BigInteger signedDigest = crh.modExpCRT(digest, d, p, q, n);
+        BigInteger signedDigest = crh.modExpCRT(digest, d, p, q);
         System.out.println("Signed digest w/ CRT: " + ioh.toHex(signedDigest) + "\n");
+
+        BigInteger unsignedDigest = signedDigest.modPow(e, n);
+        System.out.println("Signed digest wo/ CRT: " + ioh.toHex(signedDigest) + "\n");
 
         // Values to send
         ioh.writeAsHex(n, "n.hex");
+        ioh.writeAsHex(d, "d.hex");
+        ioh.writeAsHex(e, "e.hex");
         // zipped code file
         ioh.writeAsHex(signedDigest, "signedDigest.hex");
+        ioh.writeAsHex(digest, "digest.hex");
+        ioh.writeAsHex(unsignedDigest, "unsignedDigest.hex");
         // declaration of sole work
     }
 }
@@ -236,9 +246,17 @@ class CryptoHandler {
         return t;
     }
 
-    public BigInteger modExpCRT(BigInteger c, BigInteger d, BigInteger p, BigInteger q, BigInteger n) {
+    public BigInteger modExpCRT(BigInteger c, BigInteger d, BigInteger p, BigInteger q) {
         // calculate c ^ d (mod N), using CRT. We take N in via its factors,
         // p and q.
+
+        // steps to perform modular exponentiation were learned from a
+        // combination of the lecture notes theory and additional learning using
+        // the resources below:
+        // https://en.wikipedia.org/wiki/Chinese_remainder_theorem
+        // https://crypto.stanford.edu/pbc/notes/numbertheory/crt.html
+        // http://www.cut-the-knot.org/blue/chinese.shtml
+        // https://www.youtube.com/watch?v=ru7mWZJlRQg
 
         BigInteger tmp = p;
         p = tmp.min(q);
@@ -269,31 +287,7 @@ class CryptoHandler {
             e.printStackTrace();
         }
 
-        return new BigInteger(digestBytes);
-    }
-
-    public BigInteger createNBitKey(int nBits) {
-
-        IOHandler ioh = new IOHandler();
-        try {
-            BigInteger newkey = BigInteger.ONE;
-
-            // ensure the generated key is of the correct length
-            while (newkey.toByteArray().length%(nBits/8) != 0) {
-
-                KeyGenerator keyGen = KeyGenerator.getInstance("HmacSHA1");
-                keyGen.init(nBits);
-                SecretKey key = keyGen.generateKey();
-
-                newkey = new BigInteger(1, key.getEncoded());
-            }
-
-            return newkey;
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
+        return new BigInteger(1, digestBytes);
     }
 }
 
@@ -320,24 +314,6 @@ class IOHandler {
         return fileBytes;
     }
 
-    // write a byte array to a file
-    public void writeFile(byte[] fileBytes, String filename) {
-
-        File fileOut = new File(filename);
-
-        try {
-
-            FileOutputStream fileOutStream = new FileOutputStream(fileOut);
-            fileOutStream.write(fileBytes);
-            fileOutStream.close();
-
-        } catch (IOException e) {
-
-            System.out.println("There was an error writing to file: " + filename);
-            e.printStackTrace();
-        }
-    }
-
     public void writeAsHex(BigInteger value, String filename) {
 
         try {
@@ -352,28 +328,9 @@ class IOHandler {
         }
     }
 
-    public void writeHex(byte[] value, String filename) {
-
-        try {
-
-            PrintWriter out = new PrintWriter(filename);
-            out.println(DatatypeConverter.printHexBinary(value));
-            out.close();
-
-        } catch (FileNotFoundException e) {
-
-            e.printStackTrace();
-        }
-    }
-
     public String toHex(BigInteger value) {
 
         BigInteger b = new BigInteger(1, value.toByteArray());
         return b.toString(16);
-    }
-
-    public BigInteger toBigInt(String keyHexString) {
-
-        return new BigInteger(keyHexString.replaceAll("\\s+",""), 16);
     }
 }
