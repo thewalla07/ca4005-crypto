@@ -107,7 +107,7 @@ public class Assignment2 {
 
         // 7.2. Apply your decryption method to this digest. Note that for the
         // purpose of this assignment no padding should be added to the digest
-        BigInteger signedDigest = crh.modExpCRT(c, d, p, q, n);
+        BigInteger signedDigest = crh.modExpCRT(digest, d, p, q, n);
         System.out.println("Signed digest w/ CRT: " + ioh.toHex(signedDigest) + "\n");
 
         // Values to send
