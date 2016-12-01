@@ -113,18 +113,26 @@ public class Assignment2 {
         BigInteger signedDigest = crh.modExpCRT(digest, d, p, q);
         System.out.println("Signed digest w/ CRT: " + ioh.toHex(signedDigest) + "\n");
 
-        BigInteger unsignedDigest = signedDigest.modPow(e, n);
-        System.out.println("Signed digest wo/ CRT: " + ioh.toHex(signedDigest) + "\n");
-
-        // Values to send
+        // Values to send for assignment submission
+        // zipped code file
+        // declaration of sole work
+        ioh.writeAsHex(signedDigest, "signedDigest.hex");
         ioh.writeAsHex(n, "n.hex");
+
+        /************
+        *
+        *   Done
+        *
+        ************/
+        // Values for my own testing purposes
+
         ioh.writeAsHex(d, "d.hex");
         ioh.writeAsHex(e, "e.hex");
-        // zipped code file
-        ioh.writeAsHex(signedDigest, "signedDigest.hex");
+
+        BigInteger unsignedDigest = signedDigest.modPow(e, n);
+
         ioh.writeAsHex(digest, "digest.hex");
         ioh.writeAsHex(unsignedDigest, "unsignedDigest.hex");
-        // declaration of sole work
     }
 }
 
@@ -143,47 +151,88 @@ class CryptoHandler {
 
     public BigInteger eulerTotientPhi(BigInteger p, BigInteger q) {
 
-        // from notes: if p and q are both prime and p != q, then
-        // phi(pq) = (p - 1)(q - 1)
+        /*
+            from notes: if p and q are both prime and p != q, then
+            phi(pq) = (p - 1)(q - 1)
+
+            since I pre check for primality of p and q when they are
+            generated, I will not check them again here, I assume
+            that any values passed in are probable primes.
+        */
 
         if (p.compareTo(q) == 0) {
+
             return BigInteger.ZERO;
         }
 
         return p.subtract(BigInteger.ONE).multiply(q.subtract(BigInteger.ONE));
     }
 
-    public boolean areRelativelyPrime(BigInteger e, BigInteger phiN) {
+    public boolean areRelativelyPrime(BigInteger a, BigInteger b) {
 
-        return euclidianGCD(e, phiN).compareTo(BigInteger.ONE) == 0;
+        return euclidianGCD(a, b).compareTo(BigInteger.ONE) == 0;
     }
 
-    public BigInteger euclidianGCD(BigInteger e, BigInteger phiN) {
+    public BigInteger euclidianGCD(BigInteger a, BigInteger b) {
 
         /*
+            Theory from the notes:
+
             r0 = q1r1 + r2
             r1 = q2r2 + r3
                 where rk = rk-2 (mod rk-1), and q is some quotient
 
             these steps can be used progressively to find the gcd of
             r0 and r1.
+
+            In the example from lecture notes:
+            gcd(21, 12)
+                = gcd(21 mod 12, 12)
+                = gcd(9, 12)
+                = gcd(9, 12 mod 9)
+                = gcd(3, 9)
+                = gcd(3, 9 mod 3)
+                = gcd(3, 0)
+                = 3
+            ...it is understood from the above example that
+            the gcd is found by performing the following operation
+            until one of the values a or b becomes 0;
+
+                max(a, b) = max(a, b) (mod min(a, b))
+
+            at which point the gcd is the remaining non-zero number i.e. the
+            max value of a and b.
          */
 
-        while (e.compareTo(BigInteger.ZERO) != 0 && phiN.compareTo(BigInteger.ZERO) != 0) {
-            if (e.compareTo(phiN) > 0) {
-                e = e.mod(phiN);
+        while (a.compareTo(BigInteger.ZERO) != 0 && b.compareTo(BigInteger.ZERO) != 0) {
+
+            if (a.compareTo(b) > 0) {
+
+                a = a.mod(b);
+
             } else {
-                phiN = phiN.mod(e);
+
+                b = b.mod(a);
             }
         }
 
-        return e.max(phiN);
+        return a.max(b);
     }
 
-    public BigInteger multiplicativeInverse(BigInteger e, BigInteger phiN) {
+    public BigInteger multiplicativeInverse(BigInteger a, BigInteger b) {
 
         /*
-            from the lecture notes, we can determine when some 'a'
+            To get the multiplicative inverse, we use an extended
+            form of the Euclidian GCD function above. Where before
+            we would perform a modulus operation to reduce the numbers
+            only, now we will want to make use of the quotient remainder
+            of these operations.
+
+            I used a combination of the lecture theory and examples at:
+            https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
+            to learn about the extended euclidian gcd.
+
+            From the lecture notes, we can determine when some 'a'
             has an inverse (mod N) by using our EGCD algorithm ie
             iff egcd(a, N) == 1.
 
@@ -194,6 +243,7 @@ class CryptoHandler {
                 d = gcd(a,N) = xa + yN
 
             NOTE: unicode for congruent symbol ≡ is u2261
+
             considering the above modulo N we get
                 d ≡ xa + yN (mod N) ≡ xa (mod N)
 
@@ -203,30 +253,18 @@ class CryptoHandler {
 
             also: the general equation ax ≡ b (mod N) has precisely
             d = gcd(a, N) solutions iff d divides b.
-
         */
 
-        // here we are going to use the quotients instead of
-        // getting rid of them
-
-
-        // using the explanations and examples at:
-        // https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
-        // in addition to the lecture notes in order to
-        // figure out the extended EGCD
-
-        // start at values of x = 0, old_x = 1, y = 1, old_y = 1
-        // d = phiN, old_d = e
-
         BigInteger t = BigInteger.ZERO;
-        BigInteger r = phiN;
+        BigInteger r = b;
 
         BigInteger new_t = BigInteger.ONE;
-        BigInteger new_r = e;
+        BigInteger new_r = a;
 
         BigInteger tmp = BigInteger.ZERO;
 
         while (new_r.compareTo(BigInteger.ZERO) != 0) {
+
             BigInteger q = r.divide(new_r);
 
             tmp = t;
@@ -237,37 +275,114 @@ class CryptoHandler {
             r = new_r;
             new_r = tmp.subtract(q.multiply(new_r));
         }
-        if (r.compareTo(BigInteger.ONE) > 0) {
+
+        if (r.compareTo(BigInteger.ONE) != 0) {
+
+            /*
+                the value r is equivalent to the value of the function
+                egcd(a, b) if the value is not == 1, then no multiplicative
+                inverse exists, so I will return a -1 to be picked up by the
+                caller of this function.
+            */
+
             return new BigInteger("-1");
         }
+
         if (t.compareTo(BigInteger.ZERO) < 0) {
-            t = t.add(phiN);
+
+            /*
+                we can correct a negative t value simply by adding the original
+                b value
+            */
+
+            t = t.add(b);
         }
+
         return t;
     }
 
     public BigInteger modExpCRT(BigInteger c, BigInteger d, BigInteger p, BigInteger q) {
-        // calculate c ^ d (mod N), using CRT. We take N in via its factors,
-        // p and q.
 
-        // steps to perform modular exponentiation were learned from a
-        // combination of the lecture notes theory and additional learning using
-        // the resources below:
-        // https://en.wikipedia.org/wiki/Chinese_remainder_theorem
-        // https://crypto.stanford.edu/pbc/notes/numbertheory/crt.html
-        // http://www.cut-the-knot.org/blue/chinese.shtml
-        // https://www.youtube.com/watch?v=ru7mWZJlRQg
+        /*
+            calculate c ^ d (mod N), using CRT. We take N in via its factors,
+            p and q.
 
+            steps to perform modular exponentiation were learned from a
+            combination of the lecture notes theory and additional learning
+            using the resources below:
+            https://en.wikipedia.org/wiki/Chinese_remainder_theorem
+            https://crypto.stanford.edu/pbc/notes/numbertheory/crt.html
+            http://www.cut-the-knot.org/blue/chinese.shtml
+            https://www.youtube.com/watch?v=ru7mWZJlRQg
+        */
+
+        /*
+            calculate c ^ d (mod N) where N = pq:
+
+            We can simplify this process because we know the factors of N.
+            First we perform modular exponentiation of:
+                c ^ d (mod p)
+                c ^ d (mod q)
+
+            These can be made more efficient by the following general equation:
+
+                x ^ y (mod m) = (x mod m) ^ (y mod phi(m))
+
+            It is efficient to calculate phi(p) or phi(q) in our case because
+            we know they are (probably) primes.
+
+            However, since BigInteger does not have a function to calculate
+            this.pow(BigInteger value), we must use modPow in order to get
+            powers. This results in a rearrangement of the above formula to:
+
+                x ^ (y mod phi(m)) (mod m)
+
+            In my own testing, this still results in a performance improvement.
+        */
+
+        // Before calculating, we rearrange p and q so that p = min and q = max.
         BigInteger tmp = p;
         p = tmp.min(q);
         q = tmp.max(q);
 
-        BigInteger step1 = c.modPow(d.mod(p.subtract(BigInteger.ONE)), p);
-        BigInteger step2 = c.modPow(d.mod(q.subtract(BigInteger.ONE)), q);
+        // x mod N  = SUM: ai . Ni . yi
+        // Ni = N/ni
+        // yi = Ni^-1 (mod ni)
+        // WHERE  a = integers
+        //       n = pairwise primes
 
-        BigInteger modInvQ = multiplicativeInverse(q, p);
+        // a1 = (c mod p) ^ (d mod phi(p)).
+        // a2 = (c mod q) ^ (d mod phi(q)).
+        BigInteger a1 = c.modPow(d.mod(p.subtract(BigInteger.ONE)), p);
+        BigInteger a2 = c.modPow(d.mod(q.subtract(BigInteger.ONE)), q);
 
-        return step2.add(q.multiply(modInvQ.multiply(step1.subtract(step2)).mod(p)));
+
+        // Since N only has 2 factors p and q,
+        // N1 = pq/p = q
+        // N2 = pq/q = p
+        BigInteger n1 = q;
+        BigInteger n2 = p;
+
+        // y1 = q^-1 (mod p)
+        // y2 = p^-1 (mod q)
+        BigInteger y1 = multiplicativeInverse(q, p);
+        BigInteger y2 = multiplicativeInverse(p, q);
+
+        /*
+            result
+                = a1.N1.y1 + a2.N2.y2 (mod pq)
+                = a1.n2.y1 + a2.n1.y2 (mod pq)
+
+            ...this can be expanded and simplified to the following:
+
+                = a2 + n2.(n1^-1.(a1-a2) mod n1)
+
+            ...which is slightly more efficient requiring less multiplications.
+
+        */
+        BigInteger result = a2.add(q.multiply(y1.multiply(a1.subtract(a2)).mod(p)));
+
+        return result;
     }
 
     public BigInteger sha256(BigInteger num) {
